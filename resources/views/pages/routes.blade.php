@@ -1,6 +1,9 @@
 @extends('cockpit::layout')
 
 @section('content')
+{{-- Embed route data outside the HTML attribute to avoid escaping/size issues --}}
+<script id="cockpit-routes-data" type="application/json">@json($routes)</script>
+
 <div
     class="space-y-6"
     x-data="{
@@ -8,6 +11,15 @@
         method: 'all',
         page: 1,
         perPage: 25,
+        routes: [],
+
+        init() {
+            try {
+                this.routes = JSON.parse(document.getElementById('cockpit-routes-data').textContent);
+            } catch (e) {
+                console.error('[Cockpit] Failed to parse routes data', e);
+            }
+        },
 
         get filtered() {
             return this.routes.filter(r => {
@@ -36,10 +48,7 @@
             navigator.clipboard.writeText(base + '/' + uri.replace(/^\//, ''));
             Alpine.store('toasts').success('URL copied to clipboard');
         },
-
-        routes: @json($routes),
     }"
-    @search-input="resetPage()"
 >
 
     {{-- Header --}}

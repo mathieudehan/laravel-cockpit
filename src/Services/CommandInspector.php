@@ -77,10 +77,11 @@ class CommandInspector
     }
 
     /**
-     * In Laravel 11+, commands defined as closures in routes/console.php are
-     * only registered when the console kernel boots — which never happens during
-     * an HTTP request. Loading the file here registers them on the Artisan
-     * application so they appear in the command list.
+     * In Laravel 11+, commands are not registered during HTTP requests:
+     *  - routes/console.php (closure commands) is only loaded by the console kernel
+     *  - app/Console/Commands/ classes are only auto-discovered at console boot time
+     *
+     * We force-load both here so that all commands appear in the Cockpit UI.
      */
     private function ensureConsoleLoaded(): void
     {
@@ -88,16 +89,46 @@ class CommandInspector
             return;
         }
 
-        $path = base_path('routes/console.php');
+        self::$consoleLoaded = true;
 
-        if (file_exists($path)) {
+        // 1. Load closure commands from routes/console.php
+        $consolePath = base_path('routes/console.php');
+        if (file_exists($consolePath)) {
             try {
-                require_once $path;
+                require_once $consolePath;
             } catch (\Throwable $e) {
                 Log::warning("[Cockpit] Could not load routes/console.php: {$e->getMessage()}");
             }
         }
 
-        self::$consoleLoaded = true;
+        // 2. Auto-discover class-based commands from app/Console/Commands/
+        $commandsPath = app_path('Console/Commands');
+        if (! is_dir($commandsPath)) {
+            return;
+        }
+
+        try {
+            $finder    = new \Symfony\Component\Finder\Finder();
+            $namespace = app()->getNamespace();
+            $appPath   = realpath(app_path()) . DIRECTORY_SEPARATOR;
+
+            foreach ($finder->files()->name('*.php')->in($commandsPath) as $file) {
+                $class = $namespace . str_replace(
+                    ['/', '.php'],
+                    ['\\', ''],
+                    \Illuminate\Support\Str::after($file->getRealPath(), $appPath)
+                );
+
+                if (
+                    class_exists($class) &&
+                    is_subclass_of($class, \Symfony\Component\Console\Command\Command::class) &&
+                    ! (new \ReflectionClass($class))->isAbstract()
+                ) {
+                    Artisan::resolve($class);
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning("[Cockpit] Could not auto-discover commands from app/Console/Commands: {$e->getMessage()}");
+        }
     }
 }

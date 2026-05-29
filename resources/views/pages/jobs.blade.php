@@ -1,14 +1,28 @@
 @extends('cockpit::layout')
 
 @section('content')
+<script id="cockpit-pending-jobs" type="application/json">@json($pendingJobs)</script>
+<script id="cockpit-failed-jobs"  type="application/json">@json($failedJobs)</script>
+<script id="cockpit-queue-stats"  type="application/json">@json($queueStats)</script>
+
 <div
     class="space-y-6"
     x-data="{
         tab: 'failed',
-        pendingJobs: @json($pendingJobs),
-        failedJobs: @json($failedJobs),
-        queueStats: @json($queueStats),
+        pendingJobs: [],
+        failedJobs: [],
+        queueStats: {},
         loading: false,
+
+        init() {
+            try {
+                this.pendingJobs = JSON.parse(document.getElementById('cockpit-pending-jobs').textContent);
+                this.failedJobs  = JSON.parse(document.getElementById('cockpit-failed-jobs').textContent);
+                this.queueStats  = JSON.parse(document.getElementById('cockpit-queue-stats').textContent);
+            } catch (e) {
+                console.error('[Cockpit] Failed to parse jobs data', e);
+            }
+        },
 
         async retry(id) {
             if (!confirm('Retry this job?')) return;

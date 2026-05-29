@@ -1,11 +1,21 @@
 @extends('cockpit::layout')
 
 @section('content')
+<script id="cockpit-events-data" type="application/json">@json($events)</script>
+
 <div
     class="space-y-6"
     x-data="{
         search: '',
-        events: @json($events),
+        events: [],
+
+        init() {
+            try {
+                this.events = JSON.parse(document.getElementById('cockpit-events-data').textContent);
+            } catch (e) {
+                console.error('[Cockpit] Failed to parse events data', e);
+            }
+        },
 
         get filtered() {
             if (this.search === '') return this.events;

@@ -1,11 +1,21 @@
 @extends('cockpit::layout')
 
 @section('content')
+<script id="cockpit-tasks-data" type="application/json">@json($tasks)</script>
+
 <div
     class="space-y-6"
     x-data="{
         running: null,
-        tasks: @json($tasks),
+        tasks: [],
+
+        init() {
+            try {
+                this.tasks = JSON.parse(document.getElementById('cockpit-tasks-data').textContent);
+            } catch (e) {
+                console.error('[Cockpit] Failed to parse schedule data', e);
+            }
+        },
 
         async runTask(index) {
             if (this.running !== null) return;

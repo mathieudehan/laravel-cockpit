@@ -1,6 +1,10 @@
 @extends('cockpit::layout')
 
 @section('content')
+{{-- Embed command data outside the HTML attribute to avoid escaping/size issues --}}
+<script id="cockpit-commands-data" type="application/json">@json($commands)</script>
+<script id="cockpit-history-data" type="application/json">@json($history)</script>
+
 <div
     class="space-y-6"
     x-data="{
@@ -13,9 +17,17 @@
         output: null,
         outputSuccess: null,
         showHistory: false,
+        commands: {},
+        history: [],
 
-        commands: @json($commands),
-        history: @json($history),
+        init() {
+            try {
+                this.commands = JSON.parse(document.getElementById('cockpit-commands-data').textContent);
+                this.history  = JSON.parse(document.getElementById('cockpit-history-data').textContent);
+            } catch (e) {
+                console.error('[Cockpit] Failed to parse commands data', e);
+            }
+        },
 
         get namespaces() {
             return ['all', ...Object.keys(this.commands)];
@@ -26,7 +38,8 @@
             for (const [ns, cmds] of Object.entries(this.commands)) {
                 if (this.namespace !== 'all' && ns !== this.namespace) continue;
                 for (const cmd of cmds) {
-                    if (this.search === '' || cmd.name.includes(this.search) || cmd.description.toLowerCase().includes(this.search.toLowerCase())) {
+                    const desc = cmd.description || '';
+                    if (this.search === '' || cmd.name.includes(this.search) || desc.toLowerCase().includes(this.search.toLowerCase())) {
                         result.push({ ...cmd, namespace: ns });
                     }
                 }
