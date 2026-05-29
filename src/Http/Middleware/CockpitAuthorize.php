@@ -16,6 +16,11 @@ class CockpitAuthorize
         }
 
         if (! $request->user()) {
+            // Avoid redirect loops when no login route is registered
+            if (! \Illuminate\Support\Facades\Route::has('login')) {
+                abort(403, 'Unauthorized access to Cockpit.');
+            }
+
             return redirect()->guest(route('login'));
         }
 

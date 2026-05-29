@@ -67,13 +67,7 @@
             }
         },
 
-        showException(exception) {
-            window.dispatchEvent(new CustomEvent('open-modal', {
-                detail: { title: 'Exception', content: '<pre class=\'text-xs\'>' + exception.replace(/</g, '&lt;') + '</pre>' }
-            }));
-        },
     }"
-    @open-modal.window="$dispatch('open-modal', $event.detail)"
 >
 
     {{-- Header --}}

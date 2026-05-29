@@ -64,14 +64,19 @@
                 this.output = data.output;
                 this.outputSuccess = data.success;
 
-                if (data.success) Alpine.store('toasts').success('Command executed successfully');
-                else Alpine.store('toasts').error('Command returned an error');
-
-                // Refresh history
-                const r2 = await fetch(window.location.href);
-                const html = await r2.text();
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
+                if (data.success) {
+                    Alpine.store('toasts').success('Command executed successfully');
+                    this.history.unshift({
+                        command: this.selectedCommand.name,
+                        params: params,
+                        output: data.output,
+                        exit_code: 0,
+                        ran_at: new Date().toISOString().replace('T', ' ').substring(0, 19),
+                    });
+                    if (this.history.length > 20) this.history = this.history.slice(0, 20);
+                } else {
+                    Alpine.store('toasts').error('Command returned an error');
+                }
             } catch (e) {
                 this.output = 'Network error: ' + e.message;
                 this.outputSuccess = false;

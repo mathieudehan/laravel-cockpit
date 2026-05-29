@@ -5,12 +5,25 @@ namespace Mathieu\Cockpit;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Mathieu\Cockpit\Services\CommandInspector;
+use Mathieu\Cockpit\Services\EventInspector;
+use Mathieu\Cockpit\Services\JobManager;
+use Mathieu\Cockpit\Services\LogParser;
+use Mathieu\Cockpit\Services\RouteInspector;
+use Mathieu\Cockpit\Services\ScheduleInspector;
 
 class CockpitServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__ . '/../config/cockpit.php', 'cockpit');
+
+        $this->app->singleton(RouteInspector::class);
+        $this->app->singleton(CommandInspector::class);
+        $this->app->singleton(ScheduleInspector::class);
+        $this->app->singleton(EventInspector::class);
+        $this->app->singleton(LogParser::class);
+        $this->app->singleton(JobManager::class);
     }
 
     public function boot(): void

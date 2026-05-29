@@ -113,6 +113,17 @@
         @endforeach
     </div>
 
+    {{-- Truncation warning --}}
+    @if($truncated)
+        <div class="flex items-center gap-3 px-4 py-3 bg-amber-900/20 border border-amber-700/50 rounded-xl text-sm text-amber-300">
+            <svg class="w-4 h-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            </svg>
+            Log file is large — only the last {{ number_format(config('cockpit.log_max_read_bytes') / (1024 * 1024), 0) }} MB are shown.
+            Increase <code class="font-mono">COCKPIT_LOG_MAX_BYTES</code> or download the full file.
+        </div>
+    @endif
+
     {{-- File missing --}}
     @if(!$exists)
         <div class="flex flex-col items-center justify-center py-16 bg-gray-900 border border-gray-800 rounded-xl text-center">

@@ -4,79 +4,35 @@ namespace Mathieu\Cockpit\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\DB;
+use Mathieu\Cockpit\Services\JobManager;
+use Mathieu\Cockpit\Services\LogParser;
 
 class CockpitController extends Controller
 {
+    public function __construct(
+        private readonly JobManager $jobs,
+        private readonly LogParser  $logs,
+    ) {}
+
     public function index(Request $request)
     {
-        $stats = $this->gatherStats();
-        $recentErrors = $this->parseRecentErrors();
-        $appInfo = $this->gatherAppInfo();
+        $queueTable  = config('cockpit.queue_table', 'jobs');
+        $failedTable = config('cockpit.failed_jobs_table', 'failed_jobs');
+        $logFile     = config('cockpit.log_file', storage_path('logs/laravel.log'));
+
+        $stats = [
+            'pending_jobs' => $this->jobs->pendingCount($queueTable),
+            'failed_jobs'  => $this->jobs->failedCount($failedTable),
+        ];
+
+        $recentErrors = $this->logs->recentErrors($logFile);
+        $appInfo      = $this->gatherAppInfo();
 
         return view('cockpit::pages.dashboard', compact('stats', 'recentErrors', 'appInfo'));
     }
 
-    protected function gatherStats(): array
+    private function gatherAppInfo(): array
     {
-        $queueTable      = config('cockpit.queue_table', 'jobs');
-        $failedTable     = config('cockpit.failed_jobs_table', 'failed_jobs');
-        $pendingJobs     = 0;
-        $failedJobs      = 0;
-
-        try {
-            $pendingJobs = DB::table($queueTable)->count();
-        } catch (\Throwable) {
-        }
-
-        try {
-            $failedJobs = DB::table($failedTable)->count();
-        } catch (\Throwable) {
-        }
-
-        return [
-            'pending_jobs' => $pendingJobs,
-            'failed_jobs'  => $failedJobs,
-        ];
-    }
-
-    protected function parseRecentErrors(): array
-    {
-        $logFile = config('cockpit.log_file', storage_path('logs/laravel.log'));
-
-        if (! file_exists($logFile)) {
-            return [];
-        }
-
-        $errors  = [];
-        $pattern = '/\[(\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}:\d{2}[^\]]*)\] \w+\.(ERROR|CRITICAL|EMERGENCY|ALERT)[^:]*: (.+)/';
-
-        $lines = array_reverse(file($logFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES));
-
-        foreach ($lines as $line) {
-            if (count($errors) >= 5) {
-                break;
-            }
-
-            if (preg_match($pattern, $line, $matches)) {
-                $errors[] = [
-                    'date'    => $matches[1],
-                    'level'   => $matches[2],
-                    'message' => mb_strimwidth($matches[3], 0, 120, '…'),
-                ];
-            }
-        }
-
-        return $errors;
-    }
-
-    protected function gatherAppInfo(): array
-    {
-        $cacheStatus  = $this->checkCacheStatus();
-        $configCached = file_exists(app()->getCachedConfigPath());
-        $routesCached = file_exists(app()->getCachedRoutesPath());
-
         return [
             'laravel_version' => app()->version(),
             'php_version'     => PHP_VERSION,
@@ -86,13 +42,13 @@ class CockpitController extends Controller
             'cache_driver'    => config('cache.default'),
             'queue_driver'    => config('queue.default'),
             'db_driver'       => config('database.default'),
-            'cache_status'    => $cacheStatus,
-            'config_cached'   => $configCached,
-            'routes_cached'   => $routesCached,
+            'cache_status'    => $this->checkCacheConnectivity(),
+            'config_cached'   => file_exists(app()->getCachedConfigPath()),
+            'routes_cached'   => file_exists(app()->getCachedRoutesPath()),
         ];
     }
 
-    protected function checkCacheStatus(): bool
+    private function checkCacheConnectivity(): bool
     {
         try {
             cache()->store()->put('cockpit_ping', true, 5);

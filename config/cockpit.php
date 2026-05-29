@@ -56,8 +56,29 @@ return [
     |--------------------------------------------------------------------------
     | Logs
     |--------------------------------------------------------------------------
+    | log_file            — absolute path to the log file to read/parse.
+    | log_lines_per_page  — entries per page in the log viewer.
+    | log_max_read_bytes  — maximum bytes read from the tail of the log file
+    |                       to prevent out-of-memory errors on large files.
+    |                       Default: 20 MB.
     */
-    'log_file'          => env('COCKPIT_LOG_FILE', storage_path('logs/laravel.log')),
+    'log_file'           => env('COCKPIT_LOG_FILE', storage_path('logs/laravel.log')),
     'log_lines_per_page' => 100,
+    'log_max_read_bytes' => env('COCKPIT_LOG_MAX_BYTES', 20 * 1024 * 1024),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Command Blocklist
+    |--------------------------------------------------------------------------
+    | Commands whose names start with any of these prefixes cannot be executed
+    | via Cockpit, regardless of environment. Extend this list to match your
+    | security policy.
+    */
+    'command_blocklist' => [
+        'db:wipe',
+        'migrate:fresh',
+        'migrate:reset',
+        'down',
+    ],
 
 ];
